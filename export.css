@@ -1,0 +1,1 @@
+.history-actions{display:flex;gap:8px}.button-link{display:inline-flex;align-items:center;padding:8px 12px;border:1px solid var(--line);border-radius:6px;background:white;color:var(--text);text-decoration:none;cursor:pointer}.export-button{background:var(--blue);border-color:var(--blue);color:white}.button-link:hover{filter:brightness(.96)}

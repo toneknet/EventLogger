@@ -10,4 +10,8 @@ php -S localhost:8080
 
 Öppna sedan http://localhost:8080. Databasen skapas automatiskt i `data/serverlogg.sqlite` och fylls med två demoföretag. Mappen `data` måste vara skrivbar för webbservern.
 
-Prototypen har autosparande start- och sluttid, kryssrutor och kommentarer, företagsfältet **Bra att veta**, serverunika aktiva fält, valbar serverordning, aktiva/inaktiva företag och servrar samt administration/radering av loggar. Öppna vyer kontrollerar ändringar varannan sekund utan sidladdning.
+## Databasmotor
+
+SQLite används som standard. För MySQL, kopiera `.env.example` till `.env`, aktivera MySQL-raderna och fyll i anslutningsuppgifterna. Skapa den tomma databasen först; tabeller och demodata skapas automatiskt vid första starten. `.env` och SQLite-databasen ignoreras av Git.
+
+Prototypen har en autosparande start- och sluttid per företag och loggdatum, autosparande kryssrutor och kommentarer, företagsfältet **Bra att veta**, serverunika aktiva fält, valbar serverordning, uppföljningslista, JSON-export, aktiva/inaktiva företag och servrar samt administration/radering av loggar. Öppna vyer kontrollerar ändringar varannan sekund utan sidladdning.
