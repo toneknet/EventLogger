@@ -26,7 +26,7 @@ function db(): PDO {
     $pdo->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
     if($driver==='sqlite')$pdo->exec('PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;');
-    createSchema($pdo,$driver); migrateSchema($pdo,$driver); seedDatabase($pdo);
+    createSchema($pdo,$driver); migrateSchema($pdo,$driver); seedDatabase($pdo); seedAdminUser($pdo);
     return $pdo;
 }
 
@@ -35,6 +35,7 @@ function createSchema(PDO $db,string $driver): void {
     $int=$driver==='mysql'?'TINYINT(1)':'INTEGER'; $engine=$driver==='mysql'?' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci':'';
     $statements=[
         "CREATE TABLE IF NOT EXISTS companies (id $id,name VARCHAR(255) NOT NULL,info TEXT NOT NULL,active $int NOT NULL DEFAULT 1)$engine",
+        "CREATE TABLE IF NOT EXISTS users (id $id,username VARCHAR(100) NOT NULL UNIQUE,password_hash VARCHAR(255) NOT NULL,created_at VARCHAR(32) NOT NULL)$engine",
         "CREATE TABLE IF NOT EXISTS servers (id $id,company_id ".($driver==='mysql'?'BIGINT UNSIGNED':'INTEGER')." NOT NULL,name VARCHAR(255) NOT NULL,active $int NOT NULL DEFAULT 1,enabled_fields TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,is_separator $int NOT NULL DEFAULT 0,CONSTRAINT fk_servers_company FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE)$engine",
         "CREATE TABLE IF NOT EXISTS logs (id $id,company_id ".($driver==='mysql'?'BIGINT UNSIGNED':'INTEGER')." NOT NULL,server_id ".($driver==='mysql'?'BIGINT UNSIGNED':'INTEGER')." NOT NULL,log_date VARCHAR(10) NOT NULL,values_json TEXT NOT NULL,comment TEXT NOT NULL,updated_at VARCHAR(32) NOT NULL,start_time VARCHAR(5) NOT NULL DEFAULT '',end_time VARCHAR(5) NOT NULL DEFAULT '',follow_up $int NOT NULL DEFAULT 0,followup_resolved $int NOT NULL DEFAULT 0,resolution_comment TEXT NOT NULL,resolved_at VARCHAR(32) NOT NULL DEFAULT '',CONSTRAINT fk_logs_company FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE,CONSTRAINT fk_logs_server FOREIGN KEY(server_id) REFERENCES servers(id) ON DELETE CASCADE,UNIQUE(server_id,log_date))$engine",
         "CREATE TABLE IF NOT EXISTS daily_logs (id $id,company_id ".($driver==='mysql'?'BIGINT UNSIGNED':'INTEGER')." NOT NULL,log_date VARCHAR(10) NOT NULL,start_time VARCHAR(5) NOT NULL DEFAULT '',end_time VARCHAR(5) NOT NULL DEFAULT '',updated_at VARCHAR(32) NOT NULL,CONSTRAINT fk_daily_company FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE,UNIQUE(company_id,log_date))$engine"
@@ -66,6 +67,12 @@ function seedDatabase(PDO $db): void {
     $c->execute(['Nordic Demo AB','Testkund – fritt att prova.']);$c2=(int)$db->lastInsertId();
     $s=$db->prepare('INSERT INTO servers(company_id,name,enabled_fields,sort_order) VALUES (?,?,?,?)');
     $s->execute([$c1,'SRV-APP-01',json_encode(SERVICES),10]);$s->execute([$c1,'SRV-BACKUP-01',json_encode(['backup','reboot','unlocked','done']),20]);$s->execute([$c2,'DEMO-DC-01',json_encode(['sync','update','updates','reboot','done']),10]);
+}
+
+function seedAdminUser(PDO $db): void {
+    if((int)$db->query('SELECT COUNT(*) FROM users')->fetchColumn()!==0)return;
+    $s=$db->prepare('INSERT INTO users(username,password_hash,created_at) VALUES (?,?,?)');
+    $s->execute(['admin',password_hash('password',PASSWORD_DEFAULT),(new DateTimeImmutable())->format(DateTimeInterface::ATOM)]);
 }
 
 function insertIfMissing(PDO $db,string $table,array $data): void {

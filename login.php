@@ -1,0 +1,6 @@
+<?php
+declare(strict_types=1);
+require __DIR__.'/db.php';require __DIR__.'/auth.php';
+if(isAuthenticated()){header('Location: index.php');exit;}$error='';
+if($_SERVER['REQUEST_METHOD']==='POST'){$s=db()->prepare('SELECT id,username,password_hash FROM users WHERE username=?');$s->execute([trim($_POST['username']??'')]);$user=$s->fetch();if($user&&password_verify($_POST['password']??'',$user['password_hash'])){loginUser($user);header('Location: index.php');exit;}$error='Fel användarnamn eller lösenord.';}
+?><!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Logga in – Serverloggen</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="login.css"></head><body class="login-page"><main class="login-card"><div class="login-brand"><span class="mark">SL</span><div><h1>Serverloggen</h1><p>Logga in för att fortsätta</p></div></div><?php if($error):?><div class="login-error"><?=htmlspecialchars($error,ENT_QUOTES,'UTF-8')?></div><?php endif?><form method="post" class="login-form"><label>Användarnamn<input name="username" autocomplete="username" required autofocus></label><label>Lösenord<input name="password" type="password" autocomplete="current-password" required></label><button class="primary" type="submit">Logga in</button></form></main></body></html>

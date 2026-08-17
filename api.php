@@ -1,8 +1,13 @@
 <?php
 declare(strict_types=1);
 require __DIR__.'/db.php';
+require __DIR__.'/auth.php';requireApiAuth();
 $db=db(); $action=$_GET['action'] ?? ''; $in=jsonInput();
 try {
+    if($action==='session')reply(['username'=>$_SESSION['username'],'expires_at'=>$_SESSION['expires_at']]);
+    if($action==='users' && $_SERVER['REQUEST_METHOD']==='GET')reply($db->query('SELECT id,username,created_at FROM users ORDER BY username')->fetchAll());
+    if($action==='user_save'){$username=trim((string)($in['username']??''));$password=(string)($in['password']??'');if(!preg_match('/^[A-Za-z0-9_.-]{3,100}$/',$username))reply(['error'=>'Användarnamnet måste vara minst 3 tecken och får bara innehålla bokstäver, siffror, punkt, bindestreck och understreck'],422);if(strlen($password)<8)reply(['error'=>'Lösenordet måste vara minst 8 tecken'],422);try{$s=$db->prepare('INSERT INTO users(username,password_hash,created_at) VALUES (?,?,?)');$s->execute([$username,password_hash($password,PASSWORD_DEFAULT),(new DateTimeImmutable())->format(DateTimeInterface::ATOM)]);}catch(PDOException $e){if(in_array((string)$e->getCode(),['23000','19'],true))reply(['error'=>'Användarnamnet finns redan'],422);throw $e;}reply(['ok'=>true]);}
+    if($action==='user_delete'){$id=(int)($in['id']??0);if($id===(int)$_SESSION['user_id'])reply(['error'=>'Du kan inte ta bort användaren du är inloggad som'],422);if((int)$db->query('SELECT COUNT(*) FROM users')->fetchColumn()<=1)reply(['error'=>'Minst en användare måste finnas'],422);$s=$db->prepare('DELETE FROM users WHERE id=?');$s->execute([$id]);reply(['ok'=>true]);}
     if ($action==='export' && $_SERVER['REQUEST_METHOD']==='GET') {
         $companies=$db->query('SELECT id,name,info,active FROM companies ORDER BY id')->fetchAll();
         $servers=$db->query('SELECT id,company_id,name,active,enabled_fields,sort_order,is_separator FROM servers ORDER BY company_id,sort_order,id')->fetchAll();
