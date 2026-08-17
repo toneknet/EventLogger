@@ -1,0 +1,42 @@
+name: Deploy to FTP
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-ftp
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy EventLogger
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Deploy files over FTP
+        uses: SamKirkland/FTP-Deploy-Action@110f9186c050f71550953127052e77650219c287 # v4.4.0
+        with:
+          server: ls-web1-16.hostek.se
+          username: uwlts453568
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          port: 21
+          local-dir: ./
+          server-dir: serverlogg/
+          log-level: standard
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/.github/**
+            **/.env
+            **/data/*.sqlite
+            **/data/*.sqlite-wal
+            **/data/*.sqlite-shm
+            **/data/import-test.sqlite*

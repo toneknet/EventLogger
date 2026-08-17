@@ -51,3 +51,7 @@ location ^~ /data/ { deny all; }
 ```
 
 Prototypen har en autosparande start- och sluttid per företag och loggdatum, autosparande kryssrutor och kommentarer, företagsfältet **Bra att veta**, serverunika aktiva fält, valbar serverordning, uppföljningslista, JSON-export, aktiva/inaktiva företag och servrar samt administration/radering av loggar. Öppna vyer kontrollerar ändringar varannan sekund utan sidladdning.
+
+## Automatisk FTP-publicering
+
+Push till `main` startar `.github/workflows/deploy-ftp.yml` och publicerar till `serverlogg/`. Repository secret `FTP_PASSWORD` måste finnas. Workflowen laddar aldrig upp `.env`, `.git`, `.github` eller SQLite/WAL/SHM-filer.
