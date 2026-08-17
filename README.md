@@ -54,4 +54,4 @@ Prototypen har en autosparande start- och sluttid per företag och loggdatum, au
 
 ## Automatisk FTP-publicering
 
-Push till `main` startar `.github/workflows/deploy-ftp.yml` och publicerar till `serverlogg/`. Repository secret `FTP_PASSWORD` måste finnas. Workflowen laddar aldrig upp `.env`, `.git`, `.github` eller SQLite/WAL/SHM-filer.
+Push till `main` startar `.github/workflows/deploy-ftp.yml`. Följande Repository Secrets måste finnas: `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD`, `FTP_PROTOCOL`, `FTP_PORT` och `FTP_SERVER_DIR`. Workflowen laddar aldrig upp `.env`, `.git`, `.github` eller SQLite/WAL/SHM-filer.
