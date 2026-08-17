@@ -2,8 +2,9 @@
 declare(strict_types=1);
 require __DIR__.'/db.php';
 require __DIR__.'/auth.php';requireApiAuth();
-$db=db(); $action=$_GET['action'] ?? ''; $in=jsonInput();
+$action=$_GET['action'] ?? ''; $in=jsonInput();
 try {
+    $db=db();
     if($action==='session')reply(['username'=>$_SESSION['username'],'expires_at'=>$_SESSION['expires_at']]);
     if($action==='import' && $_SERVER['REQUEST_METHOD']==='POST'){
         if(empty($_FILES['backup'])||$_FILES['backup']['error']!==UPLOAD_ERR_OK)reply(['error'=>'Ingen giltig backupfil mottogs'],422);

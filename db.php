@@ -17,11 +17,14 @@ function db(): PDO {
     $driver=dbDriver();
     if ($driver==='mysql') {
         $host=getenv('DB_HOST') ?: '127.0.0.1'; $port=getenv('DB_PORT') ?: '3306'; $name=getenv('DB_DATABASE') ?: 'eventlogger';
-        $pdo=new PDO("mysql:host=$host;port=$port;dbname=$name;charset=utf8mb4",getenv('DB_USERNAME') ?: 'root',getenv('DB_PASSWORD') ?: '');
+        try{$pdo=new PDO("mysql:host=$host;port=$port;dbname=$name;charset=utf8mb4",getenv('DB_USERNAME') ?: 'root',getenv('DB_PASSWORD') ?: '');}catch(PDOException $e){throw new RuntimeException("Kunde inte ansluta till MySQL-databasen '$name' på $host:$port. Kontrollera .env och databasbehörigheterna.",0,$e);}
     } elseif ($driver==='sqlite') {
-        $dir=__DIR__.'/data'; if(!is_dir($dir))mkdir($dir,0775,true);
+        $dir=__DIR__.'/data';
+        if(!is_dir($dir)&&!@mkdir($dir,0775,true))throw new RuntimeException("SQLite-mappen kunde inte skapas: $dir. Skapa mappen och ge webbserverns användare skrivbehörighet.");
+        if(!is_writable($dir))throw new RuntimeException("SQLite-mappen är inte skrivbar: $dir. Ge webbserverns användare skrivbehörighet till mappen.");
         $path=getenv('DB_DATABASE') ?: $dir.'/serverlogg.sqlite';
-        $pdo=new PDO('sqlite:'.$path);
+        if(file_exists($path)&&!is_writable($path))throw new RuntimeException("SQLite-databasen är inte skrivbar: $path. Ge webbserverns användare skrivbehörighet till filen och data-mappen.");
+        try{$pdo=new PDO('sqlite:'.$path);}catch(PDOException $e){throw new RuntimeException("SQLite-databasen kunde inte öppnas: $path. Kontrollera att sökvägen finns och att webbservern får skriva i data-mappen.",0,$e);}
     } else throw new RuntimeException('DB_DRIVER måste vara sqlite eller mysql.');
     $pdo->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
