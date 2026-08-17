@@ -5,7 +5,7 @@ Krav: PHP 8 med `pdo_sqlite`/`sqlite3` (finns i den lokala PHP-installationen).
 Starta från denna mapp:
 
 ```powershell
-php -S localhost:8080
+php -S localhost:8080 router.php
 ```
 
 Öppna sedan http://localhost:8080. Databasen skapas automatiskt i `data/serverlogg.sqlite` och fylls med två demoföretag. Mappen `data` måste vara skrivbar för webbservern.
@@ -30,5 +30,24 @@ sudo chmod 775 data
 ```
 
 Anpassa användaren efter webbhotellet. Om mappen inte är skrivbar visar inloggningssidan ett installationsfel med den exakta sökvägen i stället för ett generellt HTTP 500-fel.
+
+`.env` läses direkt av applikationen och fungerar även på webbhotell där PHP-funktionen `putenv()` är avstängd.
+
+### Skydda `.env` och databasen
+
+Projektets `.htaccess` blockerar punktfiler och databasfiler på Apache. `web.config` gör motsvarande på IIS. PHP:s inbyggda server ska startas med `router.php` enligt kommandot ovan. Kontrollera efter publicering att både `/.env` och `/data/serverlogg.sqlite` ger 403 eller 404.
+
+Det säkraste alternativet är att placera konfigurationsfilen utanför webbrooten och ange dess absoluta sökväg i servervariabeln `EVENTLOGGER_ENV_FILE`. Exempel:
+
+```text
+EVENTLOGGER_ENV_FILE=/home/konto/private/eventlogger.env
+```
+
+För Nginx ska följande dessutom finnas i webbplatsens serverblock:
+
+```nginx
+location ~ /\. { deny all; }
+location ^~ /data/ { deny all; }
+```
 
 Prototypen har en autosparande start- och sluttid per företag och loggdatum, autosparande kryssrutor och kommentarer, företagsfältet **Bra att veta**, serverunika aktiva fält, valbar serverordning, uppföljningslista, JSON-export, aktiva/inaktiva företag och servrar samt administration/radering av loggar. Öppna vyer kontrollerar ändringar varannan sekund utan sidladdning.
