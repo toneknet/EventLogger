@@ -5,6 +5,26 @@ require __DIR__.'/auth.php';requireApiAuth();
 $db=db(); $action=$_GET['action'] ?? ''; $in=jsonInput();
 try {
     if($action==='session')reply(['username'=>$_SESSION['username'],'expires_at'=>$_SESSION['expires_at']]);
+    if($action==='import' && $_SERVER['REQUEST_METHOD']==='POST'){
+        if(empty($_FILES['backup'])||$_FILES['backup']['error']!==UPLOAD_ERR_OK)reply(['error'=>'Ingen giltig backupfil mottogs'],422);
+        if($_FILES['backup']['size']>20*1024*1024)reply(['error'=>'Backupfilen får vara högst 20 MB'],422);
+        $raw=file_get_contents($_FILES['backup']['tmp_name']);$data=json_decode($raw,true);
+        if(!is_array($data)||($data['format']??'')!=='EventLogger'||(int)($data['version']??0)!==1)reply(['error'=>'Filen är inte en giltig EventLogger-backup'],422);
+        foreach(['companies','servers','daily_logs','logs'] as $key)if(!isset($data[$key])||!is_array($data[$key]))reply(['error'=>"Backupen saknar $key"],422);
+        $db->beginTransaction();
+        try{
+            $db->exec('DELETE FROM logs');$db->exec('DELETE FROM daily_logs');$db->exec('DELETE FROM servers');$db->exec('DELETE FROM companies');
+            $company=$db->prepare('INSERT INTO companies(id,name,info,active) VALUES (?,?,?,?)');
+            foreach($data['companies'] as $x){if(!isset($x['id'],$x['name']))throw new RuntimeException('Ogiltig företagspost');$company->execute([(int)$x['id'],(string)$x['name'],(string)($x['info']??''),!empty($x['active'])?1:0]);}
+            $server=$db->prepare('INSERT INTO servers(id,company_id,name,active,enabled_fields,sort_order,is_separator) VALUES (?,?,?,?,?,?,?)');
+            foreach($data['servers'] as $x){if(!isset($x['id'],$x['company_id']))throw new RuntimeException('Ogiltig serverpost');$fields=array_values(array_intersect(SERVICES,is_array($x['enabled_fields']??null)?$x['enabled_fields']:[]));$server->execute([(int)$x['id'],(int)$x['company_id'],(string)($x['name']??''),!empty($x['active'])?1:0,json_encode($fields), (int)($x['sort_order']??0),!empty($x['is_separator'])?1:0]);}
+            $daily=$db->prepare('INSERT INTO daily_logs(id,company_id,log_date,start_time,end_time,updated_at) VALUES (?,?,?,?,?,?)');
+            foreach($data['daily_logs'] as $x)$daily->execute([(int)$x['id'],(int)$x['company_id'],(string)$x['log_date'],(string)($x['start_time']??''),(string)($x['end_time']??''),(string)($x['updated_at']??'')]);
+            $log=$db->prepare('INSERT INTO logs(id,company_id,server_id,log_date,values_json,comment,updated_at,follow_up,followup_resolved,resolution_comment,resolved_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
+            foreach($data['logs'] as $x){$values=[];foreach(SERVICES as $field)if(!empty($x['values'][$field]))$values[$field]=true;$log->execute([(int)$x['id'],(int)$x['company_id'],(int)$x['server_id'],(string)$x['log_date'],json_encode($values),(string)($x['comment']??''),(string)($x['updated_at']??''),!empty($x['follow_up'])?1:0,!empty($x['followup_resolved'])?1:0,(string)($x['resolution_comment']??''),(string)($x['resolved_at']??'')]);}
+            $db->commit();reply(['ok'=>true,'companies'=>count($data['companies']),'servers'=>count($data['servers']),'logs'=>count($data['logs'])]);
+        }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
+    }
     if($action==='users' && $_SERVER['REQUEST_METHOD']==='GET')reply($db->query('SELECT id,username,created_at FROM users ORDER BY username')->fetchAll());
     if($action==='user_save'){$username=trim((string)($in['username']??''));$password=(string)($in['password']??'');if(!preg_match('/^[A-Za-z0-9_.-]{3,100}$/',$username))reply(['error'=>'Användarnamnet måste vara minst 3 tecken och får bara innehålla bokstäver, siffror, punkt, bindestreck och understreck'],422);if(strlen($password)<8)reply(['error'=>'Lösenordet måste vara minst 8 tecken'],422);try{$s=$db->prepare('INSERT INTO users(username,password_hash,created_at) VALUES (?,?,?)');$s->execute([$username,password_hash($password,PASSWORD_DEFAULT),(new DateTimeImmutable())->format(DateTimeInterface::ATOM)]);}catch(PDOException $e){if(in_array((string)$e->getCode(),['23000','19'],true))reply(['error'=>'Användarnamnet finns redan'],422);throw $e;}reply(['ok'=>true]);}
     if($action==='user_delete'){$id=(int)($in['id']??0);if($id===(int)$_SESSION['user_id'])reply(['error'=>'Du kan inte ta bort användaren du är inloggad som'],422);if((int)$db->query('SELECT COUNT(*) FROM users')->fetchColumn()<=1)reply(['error'=>'Minst en användare måste finnas'],422);$s=$db->prepare('DELETE FROM users WHERE id=?');$s->execute([$id]);reply(['ok'=>true]);}
